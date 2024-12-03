@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{DFA5A431-AF0D-4295-94F3-944E6B3F2906}|Part2-LeNet5_Convolution_And_Subsampling\\Part2-LeNet5_Convolution_And_Subsampling.vcxproj|C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part2-LeNet5_Convolution_And_Subsampling\\main.cu||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{DFA5A431-AF0D-4295-94F3-944E6B3F2906}|Part2-LeNet5_Convolution_And_Subsampling\\Part2-LeNet5_Convolution_And_Subsampling.vcxproj|solutionrelative:Part2-LeNet5_Convolution_And_Subsampling\\main.cu||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "main.cu",
+              "DocumentMoniker": "C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part2-LeNet5_Convolution_And_Subsampling\\main.cu",
+              "RelativeDocumentMoniker": "Part2-LeNet5_Convolution_And_Subsampling\\main.cu",
+              "ToolTip": "C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part2-LeNet5_Convolution_And_Subsampling\\main.cu",
+              "RelativeToolTip": "Part2-LeNet5_Convolution_And_Subsampling\\main.cu",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2024-12-03T10:39:08.352Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

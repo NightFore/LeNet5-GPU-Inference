@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35521.163
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Part1-MatrixOperations", "Part1-MatrixOperations\Part1-MatrixOperations.vcxproj", "{A06C2F00-F28E-438E-8B47-DE3C910F4B7E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "resources", "resources", "{D0E70291-145B-46AC-9F89-C0A506CCA1A6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{67F404DD-BC64-4485-8CAE-EA980F7843AE}"
+	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Part2-LeNet5_Convolution_And_Subsampling", "Part2-LeNet5_Convolution_And_Subsampling\Part2-LeNet5_Convolution_And_Subsampling.vcxproj", "{DFA5A431-AF0D-4295-94F3-944E6B3F2906}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A06C2F00-F28E-438E-8B47-DE3C910F4B7E}.Debug|x64.ActiveCfg = Debug|x64
+		{A06C2F00-F28E-438E-8B47-DE3C910F4B7E}.Debug|x64.Build.0 = Debug|x64
+		{A06C2F00-F28E-438E-8B47-DE3C910F4B7E}.Release|x64.ActiveCfg = Release|x64
+		{A06C2F00-F28E-438E-8B47-DE3C910F4B7E}.Release|x64.Build.0 = Release|x64
+		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Debug|x64.ActiveCfg = Debug|x64
+		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Debug|x64.Build.0 = Debug|x64
+		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Release|x64.ActiveCfg = Release|x64
+		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
