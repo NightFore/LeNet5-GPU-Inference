@@ -41,7 +41,7 @@ void MatrixInit(float* M, int n, int p) {
     }
 }
 
-// Prints a matrix to the console in a formatted manner.
+// Prints a matrix in a formatted manner.
 void MatrixPrint(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -220,19 +220,19 @@ int main(int argc, char *argv[]) {
     // Copy the result from device to host
     cudaMemcpy(resultMatrix, d_Mout, n * n * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // Free GPU memory
-    cudaFree(d_M1);
-    cudaFree(d_M2);
-    cudaFree(d_Mout);
-
     // Print the result
     printf("Time taken for GPU Multiplication: %f seconds\n", gpuTime / 1000);
     if (printMatrices) {
         printf("\nResult of Matrix Multiplication:\n");
-    	MatrixPrint(resultMatrix, n, n);
+        MatrixPrint(resultMatrix, n, n);
     }
 
-    // Free the allocated memory
+    // Free device memory
+    cudaFree(d_M1);
+    cudaFree(d_M2);
+    cudaFree(d_Mout);
+
+    // Free allocated memory
     free(matrix1);
     free(matrix2);
     free(resultMatrix);
