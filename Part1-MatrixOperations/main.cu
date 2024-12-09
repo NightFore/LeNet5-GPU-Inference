@@ -6,36 +6,11 @@
 #include <time.h>
 #include "device_launch_parameters.h"
 
-
-/*
-Setup
-*/
-
 // Flag to print matrices
 bool printMatrices = false;
 
-// Kernel prototypes
-__global__ void cudaMatrixAdd(float* M1, float* M2, float* Mout, int n, int p);
-__global__ void cudaMatrixMult(float* M1, float* M2, float* Mout, int n);
-
-// Function prototypes
-void MatrixInit(float* M, int n, int p);
-void MatrixPrint(float* M, int n, int p);
-void MatrixAdd(float* M1, float* M2, float* Mout, int n, int p);
-void MatrixMult(float* M1, float* M2, float* Mout, int n);
-
-
-/*
-Configurations
-*/
-
 // Matrix dimensions and configuration parameters
 int n = 1000, p = 1000;
-
-
-/*
-Parameters
-*/
 
 // Memory pointers for host and device
 float* matrix1, * matrix2, * resultMatrix;
@@ -48,19 +23,14 @@ float cpuTime, gpuTime;
 
 
 /*
-CPU Methods
+Helper Methods
     - MatrixInit
     - MatrixPrint
+    - MatrixAdd
     - MatrixMult
 */
 
-/**
- * @brief Initializes a matrix with random values between -1 and 1.
- *
- * @param M Pointer to the matrix (host memory).
- * @param n Number of rows in the matrix.
- * @param p Number of columns in the matrix.
- */
+// Initializes a matrix with random values between -1 and 1.
 void MatrixInit(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -71,13 +41,7 @@ void MatrixInit(float* M, int n, int p) {
     }
 }
 
-/**
- * @brief Prints a matrix to the console in a formatted manner.
- *
- * @param M Pointer to the matrix (host memory).
- * @param n Number of rows in the matrix.
- * @param p Number of columns in the matrix.
- */
+// Prints a matrix to the console in a formatted manner.
 void MatrixPrint(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -89,15 +53,7 @@ void MatrixPrint(float* M, int n, int p) {
     }
 }
 
-/**
- * @brief CPU method to performs element-wise addition of two matrices.
- *
- * @param M1 Pointer to the first input matrix (host memory).
- * @param M2 Pointer to the second input matrix (host memory).
- * @param Mout Pointer to the output matrix (host memory) where the result will be stored.
- * @param n Number of rows in the matrices.
- * @param p Number of columns in the matrices.
- */
+// CPU method to performs element-wise addition of two matrices.
 void MatrixAdd(float* M1, float* M2, float* Mout, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -108,14 +64,7 @@ void MatrixAdd(float* M1, float* M2, float* Mout, int n, int p) {
     }
 }
 
-/**
- * @brief CPU method to perform matrix multiplication for two square matrices.
- *
- * @param M1 Pointer to the first input matrix (host memory).
- * @param M2 Pointer to the second input matrix (host memory).
- * @param Mout Pointer to the output matrix (host memory) where the result will be stored.
- * @param n Size of the NxN square matrices.
- */
+// CPU method to perform matrix multiplication for two square matrices.
 void MatrixMult(float* M1, float* M2, float* Mout, int n) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -133,20 +82,12 @@ void MatrixMult(float* M1, float* M2, float* Mout, int n) {
 
 
 /*
-CUDA Kernel
+Helper Kernels
     - cudaMatrixAdd
     - cudaMatrixMult
 */
 
-/*
- * @brief CUDA kernel to perform element-wise addition of two matrices.
- *
- * @param M1 Pointer to the first input matrix (device memory).
- * @param M2 Pointer to the second input matrix (device memory).
- * @param Mout Pointer to the output matrix (device memory) where the result will be stored.
- * @param n Number of rows in the matrices.
- * @param p Number of columns in the matrices.
- */
+// CUDA kernel to perform element-wise addition of two matrices.
 __global__ void cudaMatrixAdd(float* M1, float* M2, float* Mout, int n, int p) {
     // Calculate the row and column indices
     int row = blockIdx.x;
@@ -159,14 +100,7 @@ __global__ void cudaMatrixAdd(float* M1, float* M2, float* Mout, int n, int p) {
     }
 }
 
-/*
- * @brief CUDA kernel to perform matrix multiplication for two square matrices.
- *
- * @param M1 Pointer to the first input matrix (device memory).
- * @param M2 Pointer to the second input matrix (device memory).
- * @param Mout Pointer to the output matrix (device memory) where the result will be stored.
- * @param n Size of the NxN square matrices.
- */
+// CUDA kernel to perform matrix multiplication for two square matrices.
 __global__ void cudaMatrixMult(float* M1, float* M2, float* Mout, int n) {
     // Calculate the row and column indices
     int row = blockIdx.x;
@@ -277,7 +211,7 @@ int main(int argc, char *argv[]) {
 
     // Launch the kernel and measure the time
     cudaEventRecord(gpuStart);
-    cudaMatrixMult<<<n, n>>>(d_M1, d_M2, d_Mout, n);
+    cudaMatrixMult <<<n, n>>> (d_M1, d_M2, d_Mout, n);
     cudaDeviceSynchronize();
     cudaEventRecord(gpuStop);
     cudaEventSynchronize(gpuStop);
