@@ -16,6 +16,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Part2-Convolution_And_Subsampling", "Part2-Convolution_And_Subsampling\Part2-LeNet5_Convolution_And_Subsampling.vcxproj", "{DFA5A431-AF0D-4295-94F3-944E6B3F2906}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Part3-LeNet5", "Part3-LeNet5\Part3-LeNet5.vcxproj", "{9641E159-22C3-46E3-9755-94C9BA98BBC1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -30,6 +32,10 @@ Global
 		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Debug|x64.Build.0 = Debug|x64
 		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Release|x64.ActiveCfg = Release|x64
 		{DFA5A431-AF0D-4295-94F3-944E6B3F2906}.Release|x64.Build.0 = Release|x64
+		{9641E159-22C3-46E3-9755-94C9BA98BBC1}.Debug|x64.ActiveCfg = Debug|x64
+		{9641E159-22C3-46E3-9755-94C9BA98BBC1}.Debug|x64.Build.0 = Debug|x64
+		{9641E159-22C3-46E3-9755-94C9BA98BBC1}.Release|x64.ActiveCfg = Release|x64
+		{9641E159-22C3-46E3-9755-94C9BA98BBC1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

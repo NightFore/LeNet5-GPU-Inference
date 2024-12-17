@@ -1,4 +1,4 @@
-// Part2-LeNet5_Convolution_And_Subsampling.cu
+// Part2-Convolution_And_Subsampling.cu
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,14 +8,14 @@
 
 #define SIZE_RAW_DATA 32
 #define SIZE_C1_DATA 28
-#define SIZE_S1_DATA 14
+#define SIZE_S2_DATA 14
 #define SIZE_KERNEL 5
 #define NUM_KERNELS 6
 
 // Create raw data and kernel matrices
 float raw_data[SIZE_RAW_DATA * SIZE_RAW_DATA];  // 32x32 input image
 float C1_data[NUM_KERNELS * SIZE_C1_DATA * SIZE_C1_DATA] = { 0 };  // 6x28x28 after convolution
-float S1_data[NUM_KERNELS * SIZE_S1_DATA * SIZE_S1_DATA] = { 0 };  // 6x14x14 after subsampling
+float S2_data[NUM_KERNELS * SIZE_S2_DATA * SIZE_S2_DATA] = { 0 };  // 6x14x14 after subsampling
 float C1_kernel[NUM_KERNELS * SIZE_KERNEL * SIZE_KERNEL];  // 6x5x5 kernels
 
 
@@ -27,7 +27,7 @@ Helper CPU Methods
 */
 
 // Initializes a matrix with random values between -1 and 1.
-void MatrixInit(float* M, int n, int p) {
+void MatrixInit(float *M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < p; j++) {
@@ -38,7 +38,7 @@ void MatrixInit(float* M, int n, int p) {
 }
 
 // Prints a matrix in a formatted manner.
-void MatrixPrint(float* M, int n, int p) {
+void MatrixPrint(float *M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < p; j++) {
@@ -50,7 +50,7 @@ void MatrixPrint(float* M, int n, int p) {
 }
 
 // Prints a tensor in a formatted manner.
-void TensorPrint(float* T, int depth, int rows, int cols) {
+void TensorPrint(float *T, int depth, int rows, int cols) {
     for (int d = 0; d < depth; d++) {
         printf("Depth %d:\n", d);
         MatrixPrint(&T[d * rows * cols], rows, cols);  // Call MatrixPrint to print the 2D slice of the tensor (at depth 'd')
@@ -68,7 +68,7 @@ Helper Kernels
 */
 
 // Device kernel for convolution
-__device__ float applyConvolution(float* input, float* kernel, int input_size, int kernel_size, int row, int col) {
+__device__ float applyConvolution(float *input, float *kernel, int input_size, int kernel_size, int row, int col) {
     float result = 0.0f;
     for (int i = 0; i < kernel_size; i++) {
         for (int j = 0; j < kernel_size; j++) {
@@ -84,7 +84,7 @@ __device__ float activation_tanh(float M) {
 }
 
 // Convolution kernel to apply to raw_data with kernels
-__global__ void convolution2D_kernel(float* raw_data, float* C1_kernel, float* C1_data, int input_size, int kernel_size) {
+__global__ void convolution2D_kernel(float *raw_data, float *C1_kernel, float *C1_data, int input_size, int kernel_size) {
     int k = blockIdx.z;  // Kernel index (depth)
     int i = blockIdx.y;  // Row in output matrix
     int j = threadIdx.x; // Column in output matrix
@@ -96,19 +96,19 @@ __global__ void convolution2D_kernel(float* raw_data, float* C1_kernel, float* C
 }
 
 // Subsampling kernel to reduce the dimensions
-__global__ void subsample2D_kernel(float* C1_data, float* S1_data, int input_size) {
+__global__ void subsample2D_kernel(float *C1_data, float *S2_data, int input_size) {
     int k = blockIdx.z;  // Kernel index (depth)
     int i = blockIdx.y;  // Row in output matrix
     int j = threadIdx.x; // Column in output matrix
 
-    if (i < SIZE_S1_DATA && j < SIZE_S1_DATA) {
+    if (i < SIZE_S2_DATA && j < SIZE_S2_DATA) {
         float sum = 0.0f;
         for (int m = 0; m < 2; m++) {
             for (int n = 0; n < 2; n++) {
                 sum += C1_data[k * input_size * input_size + (2 * i + m) * input_size + (2 * j + n)];
             }
         }
-        S1_data[k * SIZE_S1_DATA * SIZE_S1_DATA + i * SIZE_S1_DATA + j] = sum / 4.0f;
+        S2_data[k * SIZE_S2_DATA * SIZE_S2_DATA + i * SIZE_S2_DATA + j] = sum / 4.0f;
     }
 }
 
@@ -130,11 +130,11 @@ int main() {
     MatrixPrint(C1_kernel, NUM_KERNELS, SIZE_KERNEL * SIZE_KERNEL);
 
     // Allocate memory for GPU
-    float *d_raw_data, *d_C1_kernel, *d_C1_data, *d_S1_data;
+    float *d_raw_data, *d_C1_kernel, *d_C1_data, *d_S2_data;
     cudaMalloc(&d_raw_data, SIZE_RAW_DATA * SIZE_RAW_DATA * sizeof(float));
     cudaMalloc(&d_C1_kernel, NUM_KERNELS * SIZE_KERNEL * SIZE_KERNEL * sizeof(float));
     cudaMalloc(&d_C1_data, NUM_KERNELS * SIZE_C1_DATA * SIZE_C1_DATA * sizeof(float));
-    cudaMalloc(&d_S1_data, NUM_KERNELS * SIZE_S1_DATA * SIZE_S1_DATA * sizeof(float));
+    cudaMalloc(&d_S2_data, NUM_KERNELS * SIZE_S2_DATA * SIZE_S2_DATA * sizeof(float));
 
     // Copy data from host to device
     cudaMemcpy(d_raw_data, raw_data, SIZE_RAW_DATA * SIZE_RAW_DATA * sizeof(float), cudaMemcpyHostToDevice);
@@ -151,18 +151,18 @@ int main() {
     TensorPrint(C1_data, NUM_KERNELS, SIZE_C1_DATA, SIZE_C1_DATA);
 
     // Launch subsampling kernel
-    subsample2D_kernel <<<gridSize, blockSize>>> (d_C1_data, d_S1_data, SIZE_C1_DATA);
+    subsample2D_kernel <<<gridSize, blockSize>>> (d_C1_data, d_S2_data, SIZE_C1_DATA);
     cudaDeviceSynchronize();
 
     printf("\nAfter subsampling (S1 data):\n");
-    cudaMemcpy(S1_data, d_S1_data, NUM_KERNELS * SIZE_S1_DATA * SIZE_S1_DATA * sizeof(float), cudaMemcpyDeviceToHost);
-    TensorPrint(S1_data, NUM_KERNELS, SIZE_S1_DATA, SIZE_S1_DATA);
+    cudaMemcpy(S2_data, d_S2_data, NUM_KERNELS * SIZE_S2_DATA * SIZE_S2_DATA * sizeof(float), cudaMemcpyDeviceToHost);
+    TensorPrint(S2_data, NUM_KERNELS, SIZE_S2_DATA, SIZE_S2_DATA);
 
     // Free device memory
     cudaFree(d_raw_data);
     cudaFree(d_C1_kernel);
     cudaFree(d_C1_data);
-    cudaFree(d_S1_data);
+    cudaFree(d_S2_data);
 
     return 0;
 }
