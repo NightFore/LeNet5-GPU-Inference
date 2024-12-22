@@ -65,7 +65,7 @@ Helper Methods
 */
 
 // Initializes a matrix with random values between -1 and 1.
-void MatrixInit(float* M, int n, int p) {
+void MatrixInit(float *M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < p; j++) {
@@ -76,7 +76,7 @@ void MatrixInit(float* M, int n, int p) {
 }
 
 // Prints a matrix in a formatted manner.
-void MatrixPrint(float* M, int n, int p) {
+void MatrixPrint(float *M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < p; j++) {
@@ -88,7 +88,7 @@ void MatrixPrint(float* M, int n, int p) {
 }
 
 // Prints a tensor in a formatted manner.
-void TensorPrint(float* T, int depth, int rows, int cols) {
+void TensorPrint(float *T, int depth, int rows, int cols) {
     for (int d = 0; d < depth; d++) {
         // Call MatrixPrint to print the 2D slice of the tensor (at depth 'd')
         printf("Depth %d:\n", d);
@@ -100,18 +100,52 @@ void TensorPrint(float* T, int depth, int rows, int cols) {
 
 /*
 Helper Functions & Kernels
-    - activation_tanh
+    - tanh_kernel
+    - softmax_kernel
     - convolution2D_kernel
     - subsample2D_kernel
+    - flatten_kernel
+    - fully_connected_kernel
 */
 
-// Device function to apply tanh activation
-__device__ float activation_tanh(float x) {
-    return tanhf(x);
+// Kernel to apply tanh activation to the fully connected layer output
+__global__ void tanh_kernel(float* output, int output_size) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < output_size) {
+        // Apply tanh activation function element-wise
+        output[idx] = tanhf(output[idx]);
+    }
+}
+
+// Kernel to apply softmax activation to the output layer
+__global__ void softmax_kernel(float* output, int output_size) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (idx < output_size) {
+        // Step 1: Find the maximum value in the output array
+        float max_val = output[0];
+        for (int i = 1; i < output_size; i++) {
+            if (output[i] > max_val) {
+                max_val = output[i];
+            }
+        }
+
+        // Step 2: Exponentiate each value minus the max value for numerical stability
+        float exp_value = expf(output[idx] - max_val);
+
+        // Step 3: Compute sum of exponentials in one thread (the sum is computed only once)
+        float sum_exp = 0.0f;
+        for (int i = 0; i < output_size; i++) {
+            sum_exp += expf(output[i] - max_val);  // Avoid overflow using the max value
+        }
+
+        // Step 4: Normalize the exponentials to get the final softmax
+        output[idx] = exp_value / sum_exp;
+    }
 }
 
 // Kernel function for performing 2D convolution with multiple kernels
-__global__ void convolution2D_kernel(float* input, int input_size, float* output, int output_size, int kernel_size, float* weights, float* biases) {
+__global__ void convolution2D_kernel(float *input, int input_size, float *output, int output_size, int kernel_size, float *weights, float *biases) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     int depth = blockIdx.z;  // Depth (kernel index)
@@ -141,7 +175,7 @@ __global__ void convolution2D_kernel(float* input, int input_size, float* output
         sum += biases[depth];
 
         // Apply activation function (tanh) to the result of convolution
-        float activated_value = activation_tanh(sum);
+        float activated_value = tanhf(sum);
 
         // Store the activated value in the output data
         int output_idx = depth * output_size * output_size + y * output_size + x;
@@ -150,7 +184,7 @@ __global__ void convolution2D_kernel(float* input, int input_size, float* output
 }
 
 // Kernel function for performing 2D subsampling (average pooling)
-__global__ void subsample2D_kernel(float* input, int input_size, float* output, int output_size) {
+__global__ void subsample2D_kernel(float *input, int input_size, float *output, int output_size) {
     int k = blockIdx.z;  // Depth (kernel index), one feature map at a time
     int i = blockIdx.y;  // Row in output matrix
     int j = threadIdx.x; // Column in output matrix
@@ -179,6 +213,39 @@ __global__ void subsample2D_kernel(float* input, int input_size, float* output, 
     }
 }
 
+// Kernel function for flattening 3D data into a 1D array
+__global__ void flatten_kernel(float *input, int input_depth, int input_size, float *output) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int total_size = input_depth * input_size * input_size;
+
+    if (idx < total_size) {
+        int z = idx / (input_size * input_size);
+        int y = (idx % (input_size * input_size)) / input_size;
+        int x = idx % input_size;
+        output[idx] = input[(z * input_size + y) * input_size + x];
+    }
+}
+
+// Kernel function for fully connected layer
+__global__ void fully_connected_kernel(float *input, int input_size, float *output, int output_size, float *weights, float *biases) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (idx < output_size) {
+        float sum = 0.0f;
+
+        // Perform dot product of input and weights
+        for (int i = 0; i < input_size; i++) {
+            sum += input[i] * weights[idx * input_size + i];
+        }
+
+        // Add bias
+        sum += biases[idx];
+     
+        // Store the result in output
+        output[idx] = sum;
+    }
+}
+
 /*
 Main
     - main
@@ -189,7 +256,104 @@ int main() {
     MatrixInit(input, INPUT_SIZE, INPUT_SIZE);
     MatrixInit(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
     MatrixInit(C1_biases, C1_KERNEL_DEPTH, 1);
+    MatrixInit(C3_weights, C3_KERNEL_DEPTH, C3_KERNEL_SIZE * C3_KERNEL_SIZE);
+    MatrixInit(C3_biases, C3_KERNEL_DEPTH, 1);
+    MatrixInit(F5_weights, F5_SIZE, FLATTEN_SIZE);
+    MatrixInit(F5_biases, F5_SIZE, 1);
+    MatrixInit(F6_weights, F6_SIZE, F5_SIZE);
+    MatrixInit(F6_biases, F6_SIZE, 1);
+    MatrixInit(F7_weights, F7_SIZE, F6_SIZE);
+    MatrixInit(F7_biases, F7_SIZE, 1);
 
+    // Allocate memory for GPU
+    float* d_input;
+    float *d_C1_weights, *d_C1_output, *d_C1_biases;
+    float *d_S2_output;
+    float *d_C3_weights, *d_C3_output, *d_C3_biases;
+    float *d_S4_output;
+    float *d_flattened_data;
+    float *d_F5_weights, *d_F5_output, *d_F5_biases;
+    float *d_F6_weights, *d_F6_output, *d_F6_biases;
+    float *d_F7_weights, *d_F7_output, *d_F7_biases;
+
+    cudaMalloc(&d_input, INPUT_SIZE * INPUT_SIZE * sizeof(float));
+    cudaMalloc(&d_C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float));
+    cudaMalloc(&d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float));
+    cudaMalloc(&d_C1_biases, C1_KERNEL_DEPTH * sizeof(float));
+    cudaMalloc(&d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float));
+    cudaMalloc(&d_C3_weights, C3_KERNEL_DEPTH * C3_KERNEL_SIZE * C3_KERNEL_SIZE * sizeof(float));
+    cudaMalloc(&d_C3_output, C3_KERNEL_DEPTH * C3_SIZE * C3_SIZE * sizeof(float));
+    cudaMalloc(&d_C3_biases, C3_KERNEL_DEPTH * sizeof(float));
+    cudaMalloc(&d_S4_output, C3_KERNEL_DEPTH * S4_SIZE * S4_SIZE * sizeof(float));
+    cudaMalloc(&d_flattened_data, C3_KERNEL_DEPTH * S4_SIZE * S4_SIZE * sizeof(float));
+    cudaMalloc(&d_F5_weights, F5_SIZE * FLATTEN_SIZE * sizeof(float));
+    cudaMalloc(&d_F5_output, F5_SIZE * sizeof(float));
+    cudaMalloc(&d_F5_biases, F5_SIZE * sizeof(float));
+    cudaMalloc(&d_F6_weights, F6_SIZE * F5_SIZE * sizeof(float));
+    cudaMalloc(&d_F6_output, F6_SIZE * sizeof(float));
+    cudaMalloc(&d_F6_biases, F6_SIZE * sizeof(float));
+    cudaMalloc(&d_F7_weights, F7_SIZE * F6_SIZE * sizeof(float));
+    cudaMalloc(&d_F7_output, F7_SIZE * sizeof(float));
+    cudaMalloc(&d_F7_biases, F7_SIZE * sizeof(float));
+
+    // Copy data from host to device
+    cudaMemcpy(d_input, input, INPUT_SIZE * INPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C1_weights, C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C1_biases, C1_biases, C1_KERNEL_DEPTH * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C3_weights, C3_weights, C3_KERNEL_DEPTH * C3_KERNEL_SIZE * C3_KERNEL_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C3_biases, C3_biases, C3_KERNEL_DEPTH * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_flattened_data, d_S4_output, C3_KERNEL_DEPTH * S4_SIZE * S4_SIZE * sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(d_F5_weights, F5_weights, F5_SIZE * FLATTEN_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_F5_biases, F5_biases, F5_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_F6_weights, F6_weights, F6_SIZE * F5_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_F6_biases, F6_biases, F6_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_F7_weights, F7_weights, F7_SIZE * F6_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_F7_biases, F7_biases, F7_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Step 1: Apply convolution (C1)
+    dim3 blockSize(C1_SIZE, 1, 1);
+    dim3 gridSize(C1_SIZE, C1_SIZE, C1_KERNEL_DEPTH);
+    convolution2D_kernel << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
+    cudaDeviceSynchronize();
+
+    // Step 2: Apply subsampling (S2)
+    dim3 blockSizeS2(S2_SIZE, 1, 1);
+    dim3 gridSizeS2(S2_SIZE, S2_SIZE, C1_KERNEL_DEPTH);
+    subsample2D_kernel << <gridSizeS2, blockSizeS2 >> > (d_C1_output, C1_SIZE, d_S2_output, S2_SIZE);
+    cudaDeviceSynchronize();
+
+    // Step 3: Apply convolution (C3)
+    dim3 blockSizeC3(C3_SIZE, 1, 1);
+    dim3 gridSizeC3(C3_SIZE, C3_SIZE, C3_KERNEL_DEPTH);
+    convolution2D_kernel << <gridSizeC3, blockSizeC3 >> > (d_S2_output, S2_SIZE, d_C3_output, C3_SIZE, C3_KERNEL_SIZE, d_C3_weights, d_C3_biases);
+    cudaDeviceSynchronize();
+
+    // Step 4: Apply subsampling (S4)
+    dim3 blockSizeS4(S4_SIZE, 1, 1);
+    dim3 gridSizeS4(S4_SIZE, S4_SIZE, C3_KERNEL_DEPTH);
+    subsample2D_kernel << <gridSizeS4, blockSizeS4 >> > (d_C3_output, C3_SIZE, d_S4_output, S4_SIZE);
+    cudaDeviceSynchronize();
+
+    // Flatten S4 output (Step 5)
+    flatten_kernel << <(C3_KERNEL_DEPTH * S4_SIZE * S4_SIZE + 255) / 256, 256 >> > (d_S4_output, C3_KERNEL_DEPTH, S4_SIZE, d_flattened_data);
+    cudaDeviceSynchronize();
+
+    // Step 5: Apply fully connected layer (F5)
+    fully_connected_kernel << <(F5_SIZE + 255) / 256, 256 >> > (d_flattened_data, FLATTEN_SIZE, d_F5_output, F5_SIZE, d_F5_weights, d_F5_biases);
+    tanh_kernel << <(F5_SIZE + 255) / 256, 256 >> > (d_F5_output, F5_SIZE);
+    cudaDeviceSynchronize();
+
+    // Step 6: Apply fully connected layer (F6)
+    fully_connected_kernel << <(F6_SIZE + 255) / 256, 256 >> > (d_F5_output, F5_SIZE, d_F6_output, F6_SIZE, d_F6_weights, d_F6_biases);
+    tanh_kernel << <(F6_SIZE + 255) / 256, 256 >> > (d_F6_output, F6_SIZE);
+    cudaDeviceSynchronize();
+
+    // Step 7: Apply fully connected layer (F7)
+    fully_connected_kernel << <(F7_SIZE + 255) / 256, 256 >> > (d_F6_output, F6_SIZE, d_F7_output, F7_SIZE, d_F7_weights, d_F7_biases);
+    softmax_kernel << <(F7_SIZE + 255) / 256, 256 >> > (d_F7_output, F7_SIZE);
+    cudaDeviceSynchronize();
+
+    // Results
     printf("Input data:\n");
     MatrixPrint(input, INPUT_SIZE, INPUT_SIZE);
 
@@ -199,45 +363,54 @@ int main() {
     printf("\nKernel biases (C1):\n");
     MatrixPrint(C1_biases, C1_KERNEL_DEPTH, 1);
 
-    // Allocate memory for GPU
-    float *d_input, *d_C1_weights, *d_C1_output, *d_S2_output, *d_C1_biases;
-    cudaMalloc(&d_input, INPUT_SIZE * INPUT_SIZE * sizeof(float));
-    cudaMalloc(&d_C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float));
-    cudaMalloc(&d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float));
-    cudaMalloc(&d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float));
-    cudaMalloc(&d_C1_biases, C1_KERNEL_DEPTH * sizeof(float));
-
-    // Copy data from host to device
-    cudaMemcpy(d_input, input, INPUT_SIZE * INPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_C1_weights, C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_C1_biases, C1_biases, C1_KERNEL_DEPTH * sizeof(float), cudaMemcpyHostToDevice);
-
-    // Launch convolution kernel for C1 (Convolution + activation)
-    dim3 blockSize(C1_SIZE, 1, 1);
-    dim3 gridSize(C1_SIZE, C1_SIZE, C1_KERNEL_DEPTH);
-    convolution2D_kernel << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
-    cudaDeviceSynchronize();
-
     printf("\nAfter convolution (C1 data):\n");
-    cudaMemcpy(C1_output, d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(C1_output, d_C1_output, C1_KERNEL_DEPTH* C1_SIZE* C1_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(C1_output, C1_KERNEL_DEPTH, C1_SIZE, C1_SIZE);
 
-    // Launch subsampling kernel (S2: 2x2 average pooling)
-    dim3 blockSizeS2(S2_SIZE, 1, 1);
-    dim3 gridSizeS2(S2_SIZE, S2_SIZE, C1_KERNEL_DEPTH);
-    subsample2D_kernel << <gridSize, blockSize >> > (d_C1_output, C1_SIZE, d_S2_output, S2_SIZE);
-    cudaDeviceSynchronize();
-
     printf("\nAfter subsampling (S2 data):\n");
-    cudaMemcpy(S2_output, d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(S2_output, d_S2_output, C1_KERNEL_DEPTH* S2_SIZE* S2_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(S2_output, C1_KERNEL_DEPTH, S2_SIZE, S2_SIZE);
+
+    printf("\nAfter convolution (C3 data):\n");
+    cudaMemcpy(C3_output, d_C3_output, C3_KERNEL_DEPTH* C3_SIZE* C3_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    TensorPrint(C3_output, C3_KERNEL_DEPTH, C3_SIZE, C3_SIZE);
+
+    printf("\nAfter subsampling (S4 data):\n");
+    cudaMemcpy(S4_output, d_S4_output, C3_KERNEL_DEPTH* S4_SIZE* S4_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    TensorPrint(S4_output, C3_KERNEL_DEPTH, S4_SIZE, S4_SIZE);
+
+    printf("\nAfter fully connected layer (F5 output):\n");
+    cudaMemcpy(F5_output, d_F5_output, F5_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    MatrixPrint(F5_output, F5_SIZE, 1);
+
+    printf("\nAfter fully connected layer (F6 output):\n");
+    cudaMemcpy(F6_output, d_F6_output, F6_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    MatrixPrint(F6_output, F6_SIZE, 1);
+
+    printf("\nAfter fully connected layer (F7 output):\n");
+    cudaMemcpy(F7_output, d_F7_output, F7_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    MatrixPrint(F7_output, F7_SIZE, 1);
 
     // Free device memory
     cudaFree(d_input);
     cudaFree(d_C1_weights);
     cudaFree(d_C1_output);
-    cudaFree(d_S2_output);
     cudaFree(d_C1_biases);
+    cudaFree(d_S2_output);
+    cudaFree(d_C3_weights);
+    cudaFree(d_C3_output);
+    cudaFree(d_C3_biases);
+    cudaFree(d_S4_output);
+    cudaFree(d_flattened_data);
+    cudaFree(d_F5_weights);
+    cudaFree(d_F5_output);
+    cudaFree(d_F5_biases);
+    cudaFree(d_F6_weights);
+    cudaFree(d_F6_output);
+    cudaFree(d_F6_biases);
+    cudaFree(d_F7_weights);
+    cudaFree(d_F7_output);
+    cudaFree(d_F7_biases);
 
     return 0;
 }

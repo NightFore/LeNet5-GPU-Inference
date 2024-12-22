@@ -156,6 +156,35 @@ int main() {
     MatrixInit(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
     MatrixInit(C1_biases, C1_KERNEL_DEPTH, 1);
 
+    // Allocate memory for GPU
+    float *d_input;
+    float *d_C1_weights, *d_C1_output, *d_C1_biases;
+    float *d_S2_output;
+
+    cudaMalloc(&d_input, INPUT_SIZE * INPUT_SIZE * sizeof(float));
+    cudaMalloc(&d_C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float));
+    cudaMalloc(&d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float));
+    cudaMalloc(&d_C1_biases, C1_KERNEL_DEPTH * sizeof(float));
+    cudaMalloc(&d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float));
+
+    // Copy data from host to device
+    cudaMemcpy(d_input, input, INPUT_SIZE * INPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C1_weights, C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_C1_biases, C1_biases, C1_KERNEL_DEPTH * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Step 1: Apply convolution (C1)
+    dim3 blockSize(C1_SIZE, 1, 1);
+    dim3 gridSize(C1_SIZE, C1_SIZE, C1_KERNEL_DEPTH);
+    convolution2D_kernel << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
+    cudaDeviceSynchronize();
+
+    // Step 2: Apply subsampling (S2)
+    dim3 blockSizeS2(S2_SIZE, 1, 1);
+    dim3 gridSizeS2(S2_SIZE, S2_SIZE, C1_KERNEL_DEPTH);
+    subsample2D_kernel << <gridSize, blockSize >> > (d_C1_output, C1_SIZE, d_S2_output, S2_SIZE);
+    cudaDeviceSynchronize();
+
+    // Results
     printf("Input data:\n");
     MatrixPrint(input, INPUT_SIZE, INPUT_SIZE);
 
@@ -165,34 +194,9 @@ int main() {
     printf("\nKernel biases (C1):\n");
     MatrixPrint(C1_biases, C1_KERNEL_DEPTH, 1);
 
-    // Allocate memory for GPU
-    float* d_input, * d_C1_weights, * d_C1_output, * d_S2_output, * d_C1_biases;
-    cudaMalloc(&d_input, INPUT_SIZE * INPUT_SIZE * sizeof(float));
-    cudaMalloc(&d_C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float));
-    cudaMalloc(&d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float));
-    cudaMalloc(&d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float));
-    cudaMalloc(&d_C1_biases, C1_KERNEL_DEPTH * sizeof(float));
-
-    // Copy data from host to device
-    cudaMemcpy(d_input, input, INPUT_SIZE * INPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_C1_weights, C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_C1_biases, C1_biases, C1_KERNEL_DEPTH * sizeof(float), cudaMemcpyHostToDevice);
-
-    // Launch convolution kernel for C1 (Convolution + activation)
-    dim3 blockSize(C1_SIZE, 1, 1);
-    dim3 gridSize(C1_SIZE, C1_SIZE, C1_KERNEL_DEPTH);
-    convolution2D_kernel << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
-    cudaDeviceSynchronize();
-
     printf("\nAfter convolution (C1 data):\n");
     cudaMemcpy(C1_output, d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(C1_output, C1_KERNEL_DEPTH, C1_SIZE, C1_SIZE);
-
-    // Launch subsampling kernel (S2: 2x2 average pooling)
-    dim3 blockSizeS2(S2_SIZE, 1, 1);
-    dim3 gridSizeS2(S2_SIZE, S2_SIZE, C1_KERNEL_DEPTH);
-    subsample2D_kernel << <gridSize, blockSize >> > (d_C1_output, C1_SIZE, d_S2_output, S2_SIZE);
-    cudaDeviceSynchronize();
 
     printf("\nAfter subsampling (S2 data):\n");
     cudaMemcpy(S2_output, d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
@@ -202,8 +206,8 @@ int main() {
     cudaFree(d_input);
     cudaFree(d_C1_weights);
     cudaFree(d_C1_output);
-    cudaFree(d_S2_output);
     cudaFree(d_C1_biases);
+    cudaFree(d_S2_output);
 
     return 0;
 }

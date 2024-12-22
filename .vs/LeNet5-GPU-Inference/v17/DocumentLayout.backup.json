@@ -5,10 +5,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{9641E159-22C3-46E3-9755-94C9BA98BBC1}|Part3-LeNet5\\Part3-LeNet5.vcxproj|C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part3-LeNet5\\main.cu||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{9641E159-22C3-46E3-9755-94C9BA98BBC1}|Part3-LeNet5\\Part3-LeNet5.vcxproj|solutionrelative:Part3-LeNet5\\main.cu||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{DFA5A431-AF0D-4295-94F3-944E6B3F2906}|Part2-Convolution_And_Subsampling\\Part2-LeNet5_Convolution_And_Subsampling.vcxproj|C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part2-Convolution_And_Subsampling\\main.cu||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{DFA5A431-AF0D-4295-94F3-944E6B3F2906}|Part2-Convolution_And_Subsampling\\Part2-LeNet5_Convolution_And_Subsampling.vcxproj|solutionrelative:Part2-Convolution_And_Subsampling\\main.cu||{8B382828-6202-11D1-8870-0000F87579D2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,21 +14,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "main.cu",
-              "DocumentMoniker": "C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part2-Convolution_And_Subsampling\\main.cu",
-              "RelativeDocumentMoniker": "Part2-Convolution_And_Subsampling\\main.cu",
-              "ToolTip": "C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part2-Convolution_And_Subsampling\\main.cu",
-              "RelativeToolTip": "Part2-Convolution_And_Subsampling\\main.cu",
-              "ViewState": "AgIAALEAAAAAAAAAAAAAAMEAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2024-12-17T14:14:35.333Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -41,7 +24,7 @@
               "RelativeDocumentMoniker": "Part3-LeNet5\\main.cu",
               "ToolTip": "C:\\NightFore\\Projects\\LeNet5-GPU-Inference\\Part3-LeNet5\\main.cu",
               "RelativeToolTip": "Part3-LeNet5\\main.cu",
-              "ViewState": "AgIAAMoAAAAAAAAAAAAawNkAAAA0AAAAAAAAAA==",
+              "ViewState": "AgIAAOIAAAAAAAAAAAAMwOUAAACCAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2024-12-09T10:51:26.154Z",
               "EditorCaption": ""
