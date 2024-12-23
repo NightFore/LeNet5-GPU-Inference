@@ -56,16 +56,21 @@ float F7_output[F7_SIZE];                                                   // O
 float F7_weights[F7_SIZE * F6_SIZE];                                        // Weights for F7
 float F7_biases[F7_SIZE];                                                   // Bias for each neuron in F7
 
+// Placeholder
+#define WIDTH 28
+#define HEIGHT 28
+
 
 /*
 Helper Methods
     - MatrixInit
     - MatrixPrint
     - TensorPrint
+    - charBackgroundPrint
+    - imgColorPrint
 */
-
 // Initializes a matrix with random values between -1 and 1.
-void MatrixInit(float *M, int n, int p) {
+void MatrixInit(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < p; j++) {
@@ -76,7 +81,7 @@ void MatrixInit(float *M, int n, int p) {
 }
 
 // Prints a matrix in a formatted manner.
-void MatrixPrint(float *M, int n, int p) {
+void MatrixPrint(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < p; j++) {
@@ -88,11 +93,39 @@ void MatrixPrint(float *M, int n, int p) {
 }
 
 // Prints a tensor in a formatted manner.
-void TensorPrint(float *T, int depth, int rows, int cols) {
+void TensorPrint(float* T, int depth, int rows, int cols) {
     for (int d = 0; d < depth; d++) {
         // Call MatrixPrint to print the 2D slice of the tensor (at depth 'd')
         printf("Depth %d:\n", d);
         MatrixPrint(&T[d * rows * cols], rows, cols);
+        printf("\n");
+    }
+}
+
+// Prints a string with a specified RGB background color.
+void charBackgroundPrint(char* str, int rgb[3]) {
+    // Set background color using ANSI escape codes
+    printf("\033[48;2;%d;%d;%dm", rgb[0], rgb[1], rgb[2]);
+
+    // Print the string with the set background color
+    printf("%s", str);
+
+    // Reset terminal formatting to default (no background color)
+    printf("\033[0m");
+}
+
+// Prints an image represented as a 3D array of RGB values.
+void imgColorPrint(int height, int width, int*** img) {
+    int row, col;
+
+    // Two spaces ("  ") to create a block-like effect for each pixel when printed.
+    char* str = "  ";
+
+    for (row = 0; row < height; row++) {
+        for (col = 0; col < width; col++) {
+            // Print the pixel with its corresponding RGB background color
+            charBackgroundPrint(str, img[row][col]);
+        }
         printf("\n");
     }
 }
@@ -107,7 +140,6 @@ Helper Functions & Kernels
     - flatten_kernel
     - fully_connected_kernel
 */
-
 // Kernel to apply tanh activation to the fully connected layer output
 __global__ void tanh_kernel(float* output, int output_size) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -145,7 +177,7 @@ __global__ void softmax_kernel(float* output, int output_size) {
 }
 
 // Kernel function for performing 2D convolution with multiple kernels
-__global__ void convolution2D_kernel(float *input, int input_size, float *output, int output_size, int kernel_size, float *weights, float *biases) {
+__global__ void convolution2D_kernel(float* input, int input_size, float* output, int output_size, int kernel_size, float* weights, float* biases) {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     int depth = blockIdx.z;  // Depth (kernel index)
@@ -184,7 +216,7 @@ __global__ void convolution2D_kernel(float *input, int input_size, float *output
 }
 
 // Kernel function for performing 2D subsampling (average pooling)
-__global__ void subsample2D_kernel(float *input, int input_size, float *output, int output_size) {
+__global__ void subsample2D_kernel(float* input, int input_size, float* output, int output_size) {
     int k = blockIdx.z;  // Depth (kernel index), one feature map at a time
     int i = blockIdx.y;  // Row in output matrix
     int j = threadIdx.x; // Column in output matrix
@@ -214,7 +246,7 @@ __global__ void subsample2D_kernel(float *input, int input_size, float *output, 
 }
 
 // Kernel function for flattening 3D data into a 1D array
-__global__ void flatten_kernel(float *input, int input_depth, int input_size, float *output) {
+__global__ void flatten_kernel(float* input, int input_depth, int input_size, float* output) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     int total_size = input_depth * input_size * input_size;
 
@@ -227,7 +259,7 @@ __global__ void flatten_kernel(float *input, int input_depth, int input_size, fl
 }
 
 // Kernel function for fully connected layer
-__global__ void fully_connected_kernel(float *input, int input_size, float *output, int output_size, float *weights, float *biases) {
+__global__ void fully_connected_kernel(float* input, int input_size, float* output, int output_size, float* weights, float* biases) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (idx < output_size) {
@@ -240,18 +272,20 @@ __global__ void fully_connected_kernel(float *input, int input_size, float *outp
 
         // Add bias
         sum += biases[idx];
-     
+
         // Store the result in output
         output[idx] = sum;
     }
 }
 
+
 /*
 Main
     - main
+        - main_1_LeNet5
+        - main_2_print_MNIST
 */
-
-int main() {
+int main_1_LeNet5() {
     // Initialize random values for input data and kernels
     MatrixInit(input, INPUT_SIZE, INPUT_SIZE);
     MatrixInit(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
@@ -267,14 +301,14 @@ int main() {
 
     // Allocate memory for GPU
     float* d_input;
-    float *d_C1_weights, *d_C1_output, *d_C1_biases;
-    float *d_S2_output;
-    float *d_C3_weights, *d_C3_output, *d_C3_biases;
-    float *d_S4_output;
-    float *d_flattened_data;
-    float *d_F5_weights, *d_F5_output, *d_F5_biases;
-    float *d_F6_weights, *d_F6_output, *d_F6_biases;
-    float *d_F7_weights, *d_F7_output, *d_F7_biases;
+    float* d_C1_weights, *d_C1_output, *d_C1_biases;
+    float* d_S2_output;
+    float* d_C3_weights, *d_C3_output, *d_C3_biases;
+    float* d_S4_output;
+    float* d_flattened_data;
+    float* d_F5_weights, *d_F5_output, *d_F5_biases;
+    float* d_F6_weights, *d_F6_output, *d_F6_biases;
+    float* d_F7_weights, *d_F7_output, *d_F7_biases;
 
     cudaMalloc(&d_input, INPUT_SIZE * INPUT_SIZE * sizeof(float));
     cudaMalloc(&d_C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float));
@@ -414,3 +448,69 @@ int main() {
 
     return 0;
 }
+
+int main_2_print_MNIST() {
+    int i, j;
+    int*** img;
+    int color[3] = { 255,0,0 };
+    unsigned int magic, nbImg, nbRows, nbCols;
+    unsigned char val;
+    FILE* fptr;
+
+    // Malloc image
+    img = (int***)malloc(HEIGHT * sizeof(int**));
+    for (i = 0; i < HEIGHT; i++) {
+        img[i] = (int**)malloc(WIDTH * sizeof(int*));
+        for (j = 0; j < WIDTH; j++) {
+            img[i][j] = (int*)malloc(sizeof(int) * 3);
+        }
+    }
+
+    // Open File
+    if ((fptr = fopen("train-images.idx3-ubyte", "rb")) == NULL) {
+        printf("Can't open file");
+        exit(1);
+    }
+
+    //Read File
+    fread(&magic, sizeof(int), 1, fptr);
+    fread(&nbImg, sizeof(int), 1, fptr);
+    fread(&nbRows, sizeof(int), 1, fptr);
+    fread(&nbCols, sizeof(int), 1, fptr);
+    /*
+      printf("Nb Magic : %u \n", magic);
+      printf("Nb Img : %u \n", nbImg);
+      printf("Nb Rows : %u \n", nbRows);
+      printf("Nb Cols : %u \n", nbCols);
+    */
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            fread(&val, sizeof(unsigned char), 1, fptr);
+            img[i][j][0] = (int)val * color[0] / 255;
+            img[i][j][1] = (int)val * color[1] / 255;
+            img[i][j][2] = (int)val * color[2] / 255;
+        }
+    }
+
+    imgColorPrint(HEIGHT, WIDTH, img);
+
+    // setup image grayscale
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            img[i][j][0] = ((i + j) * 4) % 255;
+            img[i][j][1] = ((i + j) * 4) % 255;
+            img[i][j][2] = ((i + j) * 4) % 255;
+        }
+    }
+
+    // print image
+    imgColorPrint(HEIGHT, WIDTH, img);
+
+    exit(EXIT_SUCCESS);
+}
+
+int main() {
+    // main_1_LeNet5();
+    main_2_print_MNIST();
+}
+
