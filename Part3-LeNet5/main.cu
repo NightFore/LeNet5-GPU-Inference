@@ -451,50 +451,54 @@ int main_1_LeNet5() {
 
 int main_2_print_MNIST() {
     int i, j;
-    int*** img;
-    int color[3] = { 255,0,0 };
-    unsigned int magic, nbImg, nbRows, nbCols;
-    unsigned char val;
-    FILE* fptr;
+    int*** img;                                         // RGB image data
+    int color[3] = {255, 0, 0};                         // RGB color for visualizing the images
+    unsigned int magic, nbImg, nbRows, nbCols;          // Metadata to hold file header data
+    unsigned char val;                                  // Temporary variable to hold pixel data
+    FILE* fptr;                                         // Pointer to the file to read from
 
-    // Malloc image
-    img = (int***)malloc(HEIGHT * sizeof(int**));
+    // Malloc for allocating memory for the image
+    img = (int***)malloc(sizeof(int**) * HEIGHT);       // Allocate space for the height (2D array of rows)
     for (i = 0; i < HEIGHT; i++) {
-        img[i] = (int**)malloc(WIDTH * sizeof(int*));
+        img[i] = (int**)malloc(sizeof(int*) * WIDTH);   // Allocate space for the width (columns)
         for (j = 0; j < WIDTH; j++) {
-            img[i][j] = (int*)malloc(sizeof(int) * 3);
+            img[i][j] = (int*)malloc(sizeof(int) * 3);  // Each pixel stores RGB values
         }
     }
 
-    // Open File
+    // Open file
     if ((fptr = fopen("train-images.idx3-ubyte", "rb")) == NULL) {
+        // Exit the program if the file can't be opened
         printf("Can't open file");
         exit(1);
     }
 
-    //Read File
-    fread(&magic, sizeof(int), 1, fptr);
-    fread(&nbImg, sizeof(int), 1, fptr);
-    fread(&nbRows, sizeof(int), 1, fptr);
-    fread(&nbCols, sizeof(int), 1, fptr);
-    /*
-      printf("Nb Magic : %u \n", magic);
-      printf("Nb Img : %u \n", nbImg);
-      printf("Nb Rows : %u \n", nbRows);
-      printf("Nb Cols : %u \n", nbCols);
-    */
+    // Read file
+    fread(&magic, sizeof(int), 1, fptr);    // Read the magic number (file type identifier)
+    fread(&nbImg, sizeof(int), 1, fptr);    // Number of images
+    fread(&nbRows, sizeof(int), 1, fptr);   // Number of rows per image (height)
+    fread(&nbCols, sizeof(int), 1, fptr);   // Number of columns per image (width)
+
+    // Print out the values
+    printf("Nb Magic : %u \n", magic);
+    printf("Nb Img : %u \n", nbImg);
+    printf("Nb Rows : %u \n", nbRows);
+    printf("Nb Cols : %u \n", nbCols);
+
+    // Read each pixel of the image and store them
     for (i = 0; i < HEIGHT; i++) {
         for (j = 0; j < WIDTH; j++) {
-            fread(&val, sizeof(unsigned char), 1, fptr);
-            img[i][j][0] = (int)val * color[0] / 255;
+            fread(&val, sizeof(unsigned char), 1, fptr);    // Read a pixel value
+            img[i][j][0] = (int)val * color[0] / 255;       // Scale the pixel to RGB values
             img[i][j][1] = (int)val * color[1] / 255;
             img[i][j][2] = (int)val * color[2] / 255;
         }
     }
 
+    // Print image
     imgColorPrint(HEIGHT, WIDTH, img);
 
-    // setup image grayscale
+    // Grayscale image example
     for (i = 0; i < HEIGHT; i++) {
         for (j = 0; j < WIDTH; j++) {
             img[i][j][0] = ((i + j) * 4) % 255;
@@ -503,7 +507,7 @@ int main_2_print_MNIST() {
         }
     }
 
-    // print image
+    // Print image
     imgColorPrint(HEIGHT, WIDTH, img);
 
     exit(EXIT_SUCCESS);
