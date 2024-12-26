@@ -455,6 +455,7 @@ int main_2_print_MNIST() {
     int color[3] = {255, 0, 0};                         // RGB color for visualizing the images
     unsigned int magic, nbImg, nbRows, nbCols;          // Metadata to hold file header data
     unsigned char val;                                  // Temporary variable to hold pixel data
+    unsigned int imgIndex = 1;                          // Specify the image index to load
     FILE* fptr;                                         // Pointer to the file to read from
 
     // Malloc for allocating memory for the image
@@ -485,19 +486,29 @@ int main_2_print_MNIST() {
     printf("Nb Rows : %u \n", nbRows);
     printf("Nb Cols : %u \n", nbCols);
 
-    // Read each pixel of the image and store them
+    // Skip through the first (imgIndex - 1) images
+    for (int skip = 0; skip < (imgIndex - 1) * HEIGHT * WIDTH; skip++) {
+        fread(&val, sizeof(unsigned char), 1, fptr);
+    }
+
+    // Read the desired image
     for (i = 0; i < HEIGHT; i++) {
         for (j = 0; j < WIDTH; j++) {
-            fread(&val, sizeof(unsigned char), 1, fptr);    // Read a pixel value
-            img[i][j][0] = (int)val * color[0] / 255;       // Scale the pixel to RGB values
+            // Read the pixel value (0-255 range)
+            fread(&val, sizeof(unsigned char), 1, fptr);
+
+            // Scale the pixel to RGB values
+            img[i][j][0] = (int)val * color[0] / 255;
             img[i][j][1] = (int)val * color[1] / 255;
             img[i][j][2] = (int)val * color[2] / 255;
         }
     }
 
     // Print image
+    printf("Image %d:\n", imgIndex);
     imgColorPrint(HEIGHT, WIDTH, img);
 
+    /*
     // Grayscale image example
     for (i = 0; i < HEIGHT; i++) {
         for (j = 0; j < WIDTH; j++) {
@@ -509,8 +520,18 @@ int main_2_print_MNIST() {
 
     // Print image
     imgColorPrint(HEIGHT, WIDTH, img);
+    */
 
-    exit(EXIT_SUCCESS);
+    // Free allocated memory after usage
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            free(img[i][j]);  // Free pixel data
+        }
+        free(img[i]);  // Free row data
+    }
+    free(img);  // Free the main image data structure
+
+    return 0;
 }
 
 int main() {
