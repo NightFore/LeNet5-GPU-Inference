@@ -8,7 +8,7 @@
 
 // Input Layer
 #define INPUT_SIZE 32                                                       // Input image size (32x32)
-float input[INPUT_SIZE * INPUT_SIZE];                                       // 32x32 input image
+float input[INPUT_SIZE * INPUT_SIZE];                                       // Normalized pixel data
 
 // Layer 1: Conv2D (C1)
 #define C1_SIZE 28                                                          // Output size after first convolution (28x28)
@@ -59,7 +59,10 @@ float F7_biases[F7_SIZE];                                                   // B
 // Placeholder
 #define WIDTH 28
 #define HEIGHT 28
-
+#define FILENAME "train-images.idx3-ubyte"
+int imgIndex = 1;
+int*** img;                                                                 // Image data
+int color[3] = { 255, 0, 0 };                                               // RGB color for visualizing the images
 
 /*
 Helper Methods
@@ -69,7 +72,7 @@ Helper Methods
     - charBackgroundPrint
     - imgColorPrint
 */
-// Initializes a matrix with random values between -1 and 1.
+// Initializes a matrix with random values between -1 and 1
 void MatrixInit(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -80,7 +83,7 @@ void MatrixInit(float* M, int n, int p) {
     }
 }
 
-// Prints a matrix in a formatted manner.
+// Prints a matrix in a formatted manner
 void MatrixPrint(float* M, int n, int p) {
     // Iterate through each element of the matrices
     for (int i = 0; i < n; i++) {
@@ -92,7 +95,7 @@ void MatrixPrint(float* M, int n, int p) {
     }
 }
 
-// Prints a tensor in a formatted manner.
+// Prints a tensor in a formatted manner
 void TensorPrint(float* T, int depth, int rows, int cols) {
     for (int d = 0; d < depth; d++) {
         // Call MatrixPrint to print the 2D slice of the tensor (at depth 'd')
@@ -102,7 +105,7 @@ void TensorPrint(float* T, int depth, int rows, int cols) {
     }
 }
 
-// Prints a string with a specified RGB background color.
+// Prints a string with a specified RGB background color
 void charBackgroundPrint(char* str, int rgb[3]) {
     // Set background color using ANSI escape codes
     printf("\033[48;2;%d;%d;%dm", rgb[0], rgb[1], rgb[2]);
@@ -114,7 +117,7 @@ void charBackgroundPrint(char* str, int rgb[3]) {
     printf("\033[0m");
 }
 
-// Prints an image represented as a 3D array of RGB values.
+// Prints an image represented as a 3D array of RGB values
 void imgColorPrint(int height, int width, int*** img) {
     int row, col;
 
@@ -128,6 +131,23 @@ void imgColorPrint(int height, int width, int*** img) {
         }
         printf("\n");
     }
+}
+
+// Applies grayscale transformation to the image
+void createGrayscaleImage(int height, int width, int*** img) {
+    int i, j;
+
+    // Apply grayscale transformation
+    for (i = 0; i < height; i++) {
+        for (j = 0; j < width; j++) {
+            img[i][j][0] = ((i + j) * 4) % 255;  // Apply grayscale pattern (R channel)
+            img[i][j][1] = ((i + j) * 4) % 255;  // Apply grayscale pattern (G channel)
+            img[i][j][2] = ((i + j) * 4) % 255;  // Apply grayscale pattern (B channel)
+        }
+    }
+
+    // Print the resulting image
+    imgColorPrint(height, width, img);
 }
 
 
@@ -398,19 +418,19 @@ int main_1_LeNet5() {
     MatrixPrint(C1_biases, C1_KERNEL_DEPTH, 1);
 
     printf("\nAfter convolution (C1 data):\n");
-    cudaMemcpy(C1_output, d_C1_output, C1_KERNEL_DEPTH* C1_SIZE* C1_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(C1_output, d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(C1_output, C1_KERNEL_DEPTH, C1_SIZE, C1_SIZE);
 
     printf("\nAfter subsampling (S2 data):\n");
-    cudaMemcpy(S2_output, d_S2_output, C1_KERNEL_DEPTH* S2_SIZE* S2_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(S2_output, d_S2_output, C1_KERNEL_DEPTH * S2_SIZE * S2_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(S2_output, C1_KERNEL_DEPTH, S2_SIZE, S2_SIZE);
 
     printf("\nAfter convolution (C3 data):\n");
-    cudaMemcpy(C3_output, d_C3_output, C3_KERNEL_DEPTH* C3_SIZE* C3_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(C3_output, d_C3_output, C3_KERNEL_DEPTH * C3_SIZE * C3_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(C3_output, C3_KERNEL_DEPTH, C3_SIZE, C3_SIZE);
 
     printf("\nAfter subsampling (S4 data):\n");
-    cudaMemcpy(S4_output, d_S4_output, C3_KERNEL_DEPTH* S4_SIZE* S4_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(S4_output, d_S4_output, C3_KERNEL_DEPTH * S4_SIZE * S4_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     TensorPrint(S4_output, C3_KERNEL_DEPTH, S4_SIZE, S4_SIZE);
 
     printf("\nAfter fully connected layer (F5 output):\n");
@@ -474,7 +494,7 @@ int main_2_print_MNIST() {
         exit(1);
     }
 
-    // Read file
+    // Read the header
     fread(&magic, sizeof(int), 1, fptr);    // Read the magic number (file type identifier)
     fread(&nbImg, sizeof(int), 1, fptr);    // Number of images
     fread(&nbRows, sizeof(int), 1, fptr);   // Number of rows per image (height)
@@ -504,23 +524,9 @@ int main_2_print_MNIST() {
         }
     }
 
-    // Print image
+    // Display image
     printf("Image %d:\n", imgIndex);
     imgColorPrint(HEIGHT, WIDTH, img);
-
-    /*
-    // Grayscale image example
-    for (i = 0; i < HEIGHT; i++) {
-        for (j = 0; j < WIDTH; j++) {
-            img[i][j][0] = ((i + j) * 4) % 255;
-            img[i][j][1] = ((i + j) * 4) % 255;
-            img[i][j][2] = ((i + j) * 4) % 255;
-        }
-    }
-
-    // Print image
-    imgColorPrint(HEIGHT, WIDTH, img);
-    */
 
     // Free allocated memory after usage
     for (i = 0; i < HEIGHT; i++) {
@@ -534,8 +540,83 @@ int main_2_print_MNIST() {
     return 0;
 }
 
+
+// Load and preprocess images
+int load_image(char* filename, int imgIndex, int width, int height) {
+    // Initialize variables
+    unsigned int magic, nbImg, nbRows, nbCols;  // Metadata
+    unsigned char val;                          // Temporary variable to hold pixel data
+    FILE* fptr;                                 // Pointer to the file to read from
+
+    // Open file
+    if ((fptr = fopen(filename, "rb")) == NULL) {
+        printf("Error: Can't open file\n");
+        return -1;
+    }
+
+    // Read the header
+    fread(&magic, sizeof(int), 1, fptr);
+    fread(&nbImg, sizeof(int), 1, fptr);
+    fread(&nbRows, sizeof(int), 1, fptr);
+    fread(&nbCols, sizeof(int), 1, fptr);
+
+    // Print the metadata values
+    printf("Nb Magic : %u \n", magic);
+    printf("Nb Img : %u \n", nbImg);
+    printf("Nb Rows : %u \n", nbRows);
+    printf("Nb Cols : %u \n", nbCols);
+
+    // Allocate memory for the image
+    img = (int***)malloc(sizeof(int**) * height);
+    for (int i = 0; i < height; i++) {
+        img[i] = (int**)malloc(sizeof(int*) * width);
+        for (int j = 0; j < width; j++) {
+            // RGB data storage
+            img[i][j] = (int*)malloc(sizeof(int) * 3);
+        }
+    }
+
+    // Skip over previous images if imgIndex > 1
+    for (int skip = 0; skip < (imgIndex - 1) * height * width; skip++) {
+        fread(&val, sizeof(unsigned char), 1, fptr);
+    }
+
+    // Read the image data
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            fread(&val, sizeof(unsigned char), 1, fptr);
+
+            // Normalize pixel value to range [0, 1]
+            input[i * width + j] = val / 255.0;
+
+            // Convert grayscale pixel value to RGB using the specified color for visualization
+            img[i][j][0] = (int)val * color[0] / 255;
+            img[i][j][1] = (int)val * color[1] / 255;
+            img[i][j][2] = (int)val * color[2] / 255;
+        }
+    }
+
+    // Display the image
+    printf("Image %d:\n", imgIndex);
+    imgColorPrint(height, width, img);
+
+    fclose(fptr);
+    return 0;
+}
+
+
+int main_3_test() {
+    // Load an image for testing (example: 1st image from MNIST dataset)
+    load_image(FILENAME, imgIndex, HEIGHT, WIDTH);
+
+    // LeNet-5 model
+
+    return 0;
+}
+
 int main() {
     // main_1_LeNet5();
-    main_2_print_MNIST();
+    // main_2_print_MNIST();
+    main_3_test();
 }
 
