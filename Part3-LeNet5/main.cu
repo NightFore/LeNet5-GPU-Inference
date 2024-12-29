@@ -301,13 +301,19 @@ __global__ void fully_connected_kernel(float* input, int input_size, float* outp
 
 /*
 Main
+    - initialize_input
+    - initialize_weights
+    - load_image
+    - run_lenet_gpu
     - main
-        - main_1_LeNet5
-        - main_2_print_MNIST
 */
-int main_1_LeNet5() {
-    // Initialize random values for input data and kernels
+// Initialize input data with random values
+void initialize_input() {
     MatrixInit(input, INPUT_SIZE, INPUT_SIZE);
+}
+
+// Initialize weights with random values
+void initialize_weights() {
     MatrixInit(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
     MatrixInit(C1_biases, C1_KERNEL_DEPTH, 1);
     MatrixInit(C3_weights, C3_KERNEL_DEPTH, C3_KERNEL_SIZE * C3_KERNEL_SIZE);
@@ -318,7 +324,73 @@ int main_1_LeNet5() {
     MatrixInit(F6_biases, F6_SIZE, 1);
     MatrixInit(F7_weights, F7_SIZE, F6_SIZE);
     MatrixInit(F7_biases, F7_SIZE, 1);
+}
 
+// Load and preprocess images
+int load_image(char* filename, int imgIndex, int width, int height) {
+    // Initialize variables
+    unsigned int magic, nbImg, nbRows, nbCols;  // Metadata
+    unsigned char val;                          // Temporary variable to hold pixel data
+    FILE* fptr;                                 // Pointer to the file to read from
+
+    // Open file
+    if ((fptr = fopen(filename, "rb")) == NULL) {
+        printf("Error: Can't open file\n");
+        return -1;
+    }
+
+    // Read the header
+    fread(&magic, sizeof(int), 1, fptr);
+    fread(&nbImg, sizeof(int), 1, fptr);
+    fread(&nbRows, sizeof(int), 1, fptr);
+    fread(&nbCols, sizeof(int), 1, fptr);
+
+    // Print the metadata values
+    printf("Nb Magic : %u \n", magic);
+    printf("Nb Img : %u \n", nbImg);
+    printf("Nb Rows : %u \n", nbRows);
+    printf("Nb Cols : %u \n", nbCols);
+
+    // Allocate memory for the image
+    img = (int***)malloc(sizeof(int**) * height);
+    for (int i = 0; i < height; i++) {
+        img[i] = (int**)malloc(sizeof(int*) * width);
+        for (int j = 0; j < width; j++) {
+            // RGB data storage
+            img[i][j] = (int*)malloc(sizeof(int) * 3);
+        }
+    }
+
+    // Skip over previous images if imgIndex > 1
+    for (int skip = 0; skip < (imgIndex - 1) * height * width; skip++) {
+        fread(&val, sizeof(unsigned char), 1, fptr);
+    }
+
+    // Read the image data
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            fread(&val, sizeof(unsigned char), 1, fptr);
+
+            // Normalize pixel value to range [0, 1]
+            input[i * width + j] = val / 255.0;
+
+            // Convert grayscale pixel value to RGB using the specified color for visualization
+            img[i][j][0] = (int)val * color[0] / 255;
+            img[i][j][1] = (int)val * color[1] / 255;
+            img[i][j][2] = (int)val * color[2] / 255;
+        }
+    }
+
+    // Display the image
+    printf("Image %d:\n", imgIndex);
+    imgColorPrint(height, width, img);
+ 
+    // Close file
+    fclose(fptr);
+}
+
+// LeNet GPU function to allocate memory, run the network, and free memory
+void run_lenet_gpu() {
     // Allocate memory for GPU
     float* d_input;
     float* d_C1_weights, *d_C1_output, *d_C1_biases;
@@ -330,6 +402,7 @@ int main_1_LeNet5() {
     float* d_F6_weights, *d_F6_output, *d_F6_biases;
     float* d_F7_weights, *d_F7_output, *d_F7_biases;
 
+    // CUDA memory allocation
     cudaMalloc(&d_input, INPUT_SIZE * INPUT_SIZE * sizeof(float));
     cudaMalloc(&d_C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE * sizeof(float));
     cudaMalloc(&d_C1_output, C1_KERNEL_DEPTH * C1_SIZE * C1_SIZE * sizeof(float));
@@ -465,158 +538,11 @@ int main_1_LeNet5() {
     cudaFree(d_F7_weights);
     cudaFree(d_F7_output);
     cudaFree(d_F7_biases);
-
-    return 0;
-}
-
-int main_2_print_MNIST() {
-    int i, j;
-    int*** img;                                         // RGB image data
-    int color[3] = {255, 0, 0};                         // RGB color for visualizing the images
-    unsigned int magic, nbImg, nbRows, nbCols;          // Metadata to hold file header data
-    unsigned char val;                                  // Temporary variable to hold pixel data
-    unsigned int imgIndex = 1;                          // Specify the image index to load
-    FILE* fptr;                                         // Pointer to the file to read from
-
-    // Malloc for allocating memory for the image
-    img = (int***)malloc(sizeof(int**) * HEIGHT);       // Allocate space for the height (2D array of rows)
-    for (i = 0; i < HEIGHT; i++) {
-        img[i] = (int**)malloc(sizeof(int*) * WIDTH);   // Allocate space for the width (columns)
-        for (j = 0; j < WIDTH; j++) {
-            img[i][j] = (int*)malloc(sizeof(int) * 3);  // Each pixel stores RGB values
-        }
-    }
-
-    // Open file
-    if ((fptr = fopen("train-images.idx3-ubyte", "rb")) == NULL) {
-        // Exit the program if the file can't be opened
-        printf("Can't open file");
-        exit(1);
-    }
-
-    // Read the header
-    fread(&magic, sizeof(int), 1, fptr);    // Read the magic number (file type identifier)
-    fread(&nbImg, sizeof(int), 1, fptr);    // Number of images
-    fread(&nbRows, sizeof(int), 1, fptr);   // Number of rows per image (height)
-    fread(&nbCols, sizeof(int), 1, fptr);   // Number of columns per image (width)
-
-    // Print out the values
-    printf("Nb Magic : %u \n", magic);
-    printf("Nb Img : %u \n", nbImg);
-    printf("Nb Rows : %u \n", nbRows);
-    printf("Nb Cols : %u \n", nbCols);
-
-    // Skip through the first (imgIndex - 1) images
-    for (int skip = 0; skip < (imgIndex - 1) * HEIGHT * WIDTH; skip++) {
-        fread(&val, sizeof(unsigned char), 1, fptr);
-    }
-
-    // Read the desired image
-    for (i = 0; i < HEIGHT; i++) {
-        for (j = 0; j < WIDTH; j++) {
-            // Read the pixel value (0-255 range)
-            fread(&val, sizeof(unsigned char), 1, fptr);
-
-            // Scale the pixel to RGB values
-            img[i][j][0] = (int)val * color[0] / 255;
-            img[i][j][1] = (int)val * color[1] / 255;
-            img[i][j][2] = (int)val * color[2] / 255;
-        }
-    }
-
-    // Display image
-    printf("Image %d:\n", imgIndex);
-    imgColorPrint(HEIGHT, WIDTH, img);
-
-    // Free allocated memory after usage
-    for (i = 0; i < HEIGHT; i++) {
-        for (j = 0; j < WIDTH; j++) {
-            free(img[i][j]);  // Free pixel data
-        }
-        free(img[i]);  // Free row data
-    }
-    free(img);  // Free the main image data structure
-
-    return 0;
-}
-
-
-// Load and preprocess images
-int load_image(char* filename, int imgIndex, int width, int height) {
-    // Initialize variables
-    unsigned int magic, nbImg, nbRows, nbCols;  // Metadata
-    unsigned char val;                          // Temporary variable to hold pixel data
-    FILE* fptr;                                 // Pointer to the file to read from
-
-    // Open file
-    if ((fptr = fopen(filename, "rb")) == NULL) {
-        printf("Error: Can't open file\n");
-        return -1;
-    }
-
-    // Read the header
-    fread(&magic, sizeof(int), 1, fptr);
-    fread(&nbImg, sizeof(int), 1, fptr);
-    fread(&nbRows, sizeof(int), 1, fptr);
-    fread(&nbCols, sizeof(int), 1, fptr);
-
-    // Print the metadata values
-    printf("Nb Magic : %u \n", magic);
-    printf("Nb Img : %u \n", nbImg);
-    printf("Nb Rows : %u \n", nbRows);
-    printf("Nb Cols : %u \n", nbCols);
-
-    // Allocate memory for the image
-    img = (int***)malloc(sizeof(int**) * height);
-    for (int i = 0; i < height; i++) {
-        img[i] = (int**)malloc(sizeof(int*) * width);
-        for (int j = 0; j < width; j++) {
-            // RGB data storage
-            img[i][j] = (int*)malloc(sizeof(int) * 3);
-        }
-    }
-
-    // Skip over previous images if imgIndex > 1
-    for (int skip = 0; skip < (imgIndex - 1) * height * width; skip++) {
-        fread(&val, sizeof(unsigned char), 1, fptr);
-    }
-
-    // Read the image data
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            fread(&val, sizeof(unsigned char), 1, fptr);
-
-            // Normalize pixel value to range [0, 1]
-            input[i * width + j] = val / 255.0;
-
-            // Convert grayscale pixel value to RGB using the specified color for visualization
-            img[i][j][0] = (int)val * color[0] / 255;
-            img[i][j][1] = (int)val * color[1] / 255;
-            img[i][j][2] = (int)val * color[2] / 255;
-        }
-    }
-
-    // Display the image
-    printf("Image %d:\n", imgIndex);
-    imgColorPrint(height, width, img);
-
-    fclose(fptr);
-    return 0;
-}
-
-
-int main_3_test() {
-    // Load an image for testing (example: 1st image from MNIST dataset)
-    load_image(FILENAME, imgIndex, HEIGHT, WIDTH);
-
-    // LeNet-5 model
-
-    return 0;
 }
 
 int main() {
-    // main_1_LeNet5();
-    // main_2_print_MNIST();
-    main_3_test();
+    // initialize_input();
+    initialize_weights();
+    load_image(FILENAME, imgIndex, HEIGHT, WIDTH);
+    run_lenet_gpu();
 }
-
