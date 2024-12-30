@@ -71,6 +71,8 @@ Helper Methods
     - TensorPrint
     - charBackgroundPrint
     - imgColorPrint
+    - create_and_print_image
+    - createGrayscaleImage
 */
 // Initializes a matrix with random values between -1 and 1
 void MatrixInit(float* M, int n, int p) {
@@ -132,6 +134,43 @@ void imgColorPrint(int height, int width, int*** img) {
         printf("\n");
     }
 }
+
+// Allocate memory, convert input to RGB, and print the image
+void create_and_print_image(int height, int width) {
+    // Allocate memory for the image
+    img = (int***)malloc(sizeof(int**) * height);
+    for (int i = 0; i < height; i++) {
+        img[i] = (int**)malloc(sizeof(int*) * width);
+        for (int j = 0; j < width; j++) {
+            // RGB data storage
+            img[i][j] = (int*)malloc(sizeof(int) * 3);
+        }
+    }
+
+    // Convert the input data to RGB and store in img array
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            // Convert the pixel value in input to RGB for visualization
+            int pixelVal = (int)(input[i * width + j] * 255);
+            img[i][j][0] = (int)(pixelVal * color[0] / 255);  // Red channel
+            img[i][j][1] = (int)(pixelVal * color[1] / 255);  // Green channel
+            img[i][j][2] = (int)(pixelVal * color[2] / 255);  // Blue channel
+        }
+    }
+
+    // Display the image
+    imgColorPrint(height, width, img);
+
+    // Free allocated memory after usage
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            free(img[i][j]);
+        }
+        free(img[i]);
+    }
+    free(img);
+}
+
 
 // Applies grayscale transformation to the image
 void createGrayscaleImage(int height, int width, int*** img) {
@@ -304,6 +343,8 @@ Main
     - initialize_input
     - initialize_weights
     - load_image
+    - pad_image
+    - load_weights
     - run_lenet_gpu
     - main
 */
@@ -351,16 +392,6 @@ int load_image(char* filename, int imgIndex, int width, int height) {
     printf("Nb Rows : %u \n", nbRows);
     printf("Nb Cols : %u \n", nbCols);
 
-    // Allocate memory for the image
-    img = (int***)malloc(sizeof(int**) * height);
-    for (int i = 0; i < height; i++) {
-        img[i] = (int**)malloc(sizeof(int*) * width);
-        for (int j = 0; j < width; j++) {
-            // RGB data storage
-            img[i][j] = (int*)malloc(sizeof(int) * 3);
-        }
-    }
-
     // Skip over previous images if imgIndex > 1
     for (int skip = 0; skip < (imgIndex - 1) * height * width; skip++) {
         fread(&val, sizeof(unsigned char), 1, fptr);
@@ -370,23 +401,67 @@ int load_image(char* filename, int imgIndex, int width, int height) {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             fread(&val, sizeof(unsigned char), 1, fptr);
-
-            // Normalize pixel value to range [0, 1]
-            input[i * width + j] = val / 255.0;
-
-            // Convert grayscale pixel value to RGB using the specified color for visualization
-            img[i][j][0] = (int)val * color[0] / 255;
-            img[i][j][1] = (int)val * color[1] / 255;
-            img[i][j][2] = (int)val * color[2] / 255;
+            input[i * width + j] = val / 255.0f;  // Normalize to range [0, 1]
         }
     }
 
-    // Display the image
-    printf("Image %d:\n", imgIndex);
-    imgColorPrint(height, width, img);
+    // Allocate memory for RGB img and print the "before padding" image
+    img = (int***)malloc(sizeof(int**) * height);   // Using original height/width for the 3D array
+    for (int i = 0; i < height; i++) {
+        img[i] = (int**)malloc(sizeof(int*) * width);  // Using original width for the 3D array
+        for (int j = 0; j < width; j++) {
+            img[i][j] = (int*)malloc(sizeof(int) * 3);   // RGB channels
+        }
+    }
+
+    // Convert the input data to RGB and store it in the img array for "before padding"
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            int pixelVal = (int)(input[i * width + j] * 255); // RGB conversion for visualization
+            img[i][j][0] = (int)(pixelVal * color[0] / 255);  // Red channel
+            img[i][j][1] = (int)(pixelVal * color[1] / 255);  // Green channel
+            img[i][j][2] = (int)(pixelVal * color[2] / 255);  // Blue channel
+        }
+    }
  
     // Close file
     fclose(fptr);
+}
+
+// Pad the input image to match INPUT_SIZE x INPUT_SIZE
+void pad_image(int height, int width) {
+    int paddedWidth = INPUT_SIZE;
+    int paddedHeight = INPUT_SIZE;
+
+    // Initialize the padded image to zero
+    float paddedImg[INPUT_SIZE][INPUT_SIZE];
+    for (int i = 0; i < paddedHeight; i++) {
+        for (int j = 0; j < paddedWidth; j++) {
+            paddedImg[i][j] = 0.0f;  // Set default zero value
+        }
+    }
+
+    // Offset to place the original image in the center of the padded image
+    int offsetX = (paddedWidth - width) / 2;
+    int offsetY = (paddedHeight - height) / 2;
+
+    // Copy the image into the center of the padded image
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            paddedImg[i + offsetY][j + offsetX] = input[i * width + j];
+        }
+    }
+
+    // Copy back the padded image
+    for (int i = 0; i < paddedHeight; i++) {
+        for (int j = 0; j < paddedWidth; j++) {
+            input[i * paddedWidth + j] = paddedImg[i][j];
+        }
+    }
+}
+
+void load_weights() {
+
 }
 
 // LeNet GPU function to allocate memory, run the network, and free memory
@@ -541,8 +616,29 @@ void run_lenet_gpu() {
 }
 
 int main() {
-    // initialize_input();
-    initialize_weights();
+    // Step 1: Iniatialiaz or load input
+    printf("Loading image...\n");
+    // initialize_input(); // Random input initialization
     load_image(FILENAME, imgIndex, HEIGHT, WIDTH);
+
+    // Step 2: Print the original image
+    printf("\nImage Before Padding:\n");
+    create_and_print_image(HEIGHT, WIDTH);
+
+    // Step 3: Pad the image to the required INPUT_SIZE
+    printf("\nPadding the image...\n");
+    pad_image(HEIGHT, WIDTH);
+
+    // Step 4: Print the padded image
+    printf("\nImage After Padding:\n");
+    create_and_print_image(INPUT_SIZE, INPUT_SIZE);
+
+    // Step 5: Initialize or load weights
+    printf("\nInitializing weights...\n");
+    initialize_weights();  // Random weight initialization
+    // load_weights();
+    
+    // Step 6: Run the neural network on GPU
+    printf("\nRunning the LeNet model on GPU...\n");
     run_lenet_gpu();
 }
