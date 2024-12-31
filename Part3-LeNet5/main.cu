@@ -615,7 +615,7 @@ void run_lenet_gpu() {
     cudaFree(d_F7_biases);
 }
 
-int main() {
+int main_1() {
     // Step 1: Iniatialiaz or load input
     printf("Loading image...\n");
     // initialize_input(); // Random input initialization
@@ -641,4 +641,50 @@ int main() {
     // Step 6: Run the neural network on GPU
     printf("\nRunning the LeNet model on GPU...\n");
     run_lenet_gpu();
+
+    return 0;
+}
+
+void load_C1_weights(const char* filename, float* weights, int size) {
+    // Open the file in read mode
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Unable to open file %s.\n", filename);
+        exit(EXIT_FAILURE); // Exit if file opening fails
+    }
+
+    // Read weights from the file
+    for (int i = 0; i < size; i++) {
+        if (fscanf(file, "%f", &weights[i]) != 1) {
+            printf("Error: File format incorrect or insufficient data in %s.\n", filename);
+            fclose(file);
+            exit(EXIT_FAILURE); // Exit if reading fails
+        }
+    }
+
+    // Close the file
+    fclose(file);
+    printf("Weights successfully loaded from %s.\n", filename);
+}
+
+int main() {
+    const char* C1_kernel_filename = "C1_kernel.txt";
+
+    // Define size of the C1 kernel array
+    const int C1_kernel_size = C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE;
+
+    // Load weights for C1
+    load_C1_weights(C1_kernel_filename, C1_weights, C1_kernel_size);
+
+    // Optionally, print the weights for verification
+    printf("C1 Weights:\n");
+    for (int i = 0; i < C1_kernel_size; i++) {
+        printf("%f ", C1_weights[i]);
+        if ((i + 1) % C1_KERNEL_SIZE == 0) {
+            printf("\n"); // Add a newline for better readability
+        }
+    }
+    printf("\n");
+
+    return 0;
 }
