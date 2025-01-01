@@ -59,7 +59,7 @@ float F7_biases[F7_SIZE];                                                   // B
 // Placeholder
 #define WIDTH 28
 #define HEIGHT 28
-#define FILENAME "train-images.idx3-ubyte"
+#define FILENAME "data/train-images.idx3-ubyte"
 int imgIndex = 1;
 int*** img;                                                                 // Image data
 int color[3] = { 255, 0, 0 };                                               // RGB color for visualizing the images
@@ -345,6 +345,7 @@ Main
     - load_image
     - pad_image
     - load_weights
+    - load_all_weights
     - run_lenet_gpu
     - main
 */
@@ -460,8 +461,53 @@ void pad_image(int height, int width) {
     }
 }
 
-void load_weights() {
+// Load weights from a file
+void load_weights(const char* filename, float* weights, int size) {
+    // Open the file in read mode
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Unable to open file %s.\n", filename);
+        exit(EXIT_FAILURE); // Exit if file opening fails
+    }
 
+    // Read weights from the file
+    for (int i = 0; i < size; i++) {
+        if (fscanf(file, "%f", &weights[i]) != 1) {
+            printf("Error: File format incorrect or insufficient data in %s.\n", filename);
+            fclose(file);
+            exit(EXIT_FAILURE); // Exit if reading fails
+        }
+    }
+
+    // Close the file
+    fclose(file);
+    printf("Weights successfully loaded from %s.\n", filename);
+}
+
+// Load weights for all layers
+void load_all_weights() {
+    // File names for each layer's weight data
+    const char* C1_weights_file = "data/C1_weights.txt";
+    const char* C3_weights_file = "data/C3_weights.txt";
+    const char* F5_weights_file = "data/F5_weights.txt";
+    const char* F6_weights_file = "data/F6_weights.txt";
+    const char* F7_weights_file = "data/F7_weights.txt";
+
+    // Load weights for each layer
+    load_weights(C1_weights_file, C1_weights, C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE);
+    load_weights(C3_weights_file, C3_weights, C3_KERNEL_DEPTH * C3_KERNEL_SIZE * C3_KERNEL_SIZE);
+    load_weights(F5_weights_file, F5_weights, F5_SIZE * (S4_SIZE * S4_SIZE * C3_KERNEL_DEPTH));
+    load_weights(F6_weights_file, F6_weights, F6_SIZE * F5_SIZE);
+    load_weights(F7_weights_file, F7_weights, F7_SIZE * F6_SIZE);
+
+    // Print loaded weights for C1 (for debugging purposes)
+    printf("\nC1 Kernel Weights:\n");
+    for (int i = 0; i < C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE; i++) {
+        printf("%f ", C1_weights[i]);
+        if ((i + 1) % C1_KERNEL_SIZE == 0) {
+            printf("\n");
+        }
+    }
 }
 
 // LeNet GPU function to allocate memory, run the network, and free memory
@@ -615,7 +661,7 @@ void run_lenet_gpu() {
     cudaFree(d_F7_biases);
 }
 
-int main_1() {
+int main() {
     // Step 1: Iniatialiaz or load input
     printf("Loading image...\n");
     // initialize_input(); // Random input initialization
@@ -635,56 +681,12 @@ int main_1() {
 
     // Step 5: Initialize or load weights
     printf("\nInitializing weights...\n");
-    initialize_weights();  // Random weight initialization
-    // load_weights();
+    // initialize_weights();  // Random weight initialization
+    load_all_weights();
     
     // Step 6: Run the neural network on GPU
     printf("\nRunning the LeNet model on GPU...\n");
     run_lenet_gpu();
-
-    return 0;
-}
-
-void load_C1_weights(const char* filename, float* weights, int size) {
-    // Open the file in read mode
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        printf("Error: Unable to open file %s.\n", filename);
-        exit(EXIT_FAILURE); // Exit if file opening fails
-    }
-
-    // Read weights from the file
-    for (int i = 0; i < size; i++) {
-        if (fscanf(file, "%f", &weights[i]) != 1) {
-            printf("Error: File format incorrect or insufficient data in %s.\n", filename);
-            fclose(file);
-            exit(EXIT_FAILURE); // Exit if reading fails
-        }
-    }
-
-    // Close the file
-    fclose(file);
-    printf("Weights successfully loaded from %s.\n", filename);
-}
-
-int main() {
-    const char* C1_kernel_filename = "C1_kernel.txt";
-
-    // Define size of the C1 kernel array
-    const int C1_kernel_size = C1_KERNEL_DEPTH * C1_KERNEL_SIZE * C1_KERNEL_SIZE;
-
-    // Load weights for C1
-    load_C1_weights(C1_kernel_filename, C1_weights, C1_kernel_size);
-
-    // Optionally, print the weights for verification
-    printf("C1 Weights:\n");
-    for (int i = 0; i < C1_kernel_size; i++) {
-        printf("%f ", C1_weights[i]);
-        if ((i + 1) % C1_KERNEL_SIZE == 0) {
-            printf("\n"); // Add a newline for better readability
-        }
-    }
-    printf("\n");
-
+    
     return 0;
 }
