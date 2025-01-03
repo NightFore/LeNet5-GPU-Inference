@@ -7,7 +7,8 @@
 #include <cmath>
 
 // Input Layer
-#define INPUT_SIZE 32                                                       // Input image size (32x32)
+#define INPUT_SIZE 28                                                       // Input image size (28x28)
+// #define INPUT_SIZE 32                                                       // Input image size (32x32)
 float input[INPUT_SIZE * INPUT_SIZE];                                       // Normalized pixel data
 
 // Layer 1: Conv2D (C1)
@@ -86,12 +87,13 @@ void MatrixInit(float* M, int n, int p) {
 }
 
 // Prints a matrix in a formatted manner
-void MatrixPrint(float* M, int n, int p) {
-    // Iterate through each element of the matrices
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < p; j++) {
+void MatrixPrint(float* M, int rows, int cols) {
+    // Iterate through each row of the matrix
+    for (int i = 0; i < rows; i++) {
+        // Iterate through each column of the matrix
+        for (int j = 0; j < cols; j++) {
             // Print each element of the matrix with 2 decimal places
-            printf("%6.2f ", M[i * p + j]);
+            printf("%6.2f ", M[i * cols + j]);
         }
         printf("\n");
     }
@@ -253,6 +255,48 @@ __global__ void convolution2D_kernel(float* input, int input_size, float* output
 
                 // Check bounds to ensure we don't access outside the input
                 if (input_x < input_size && input_y < input_size) {
+                    int input_idx = input_y * input_size + input_x;                             // Flattened index of input
+                    int kernel_idx = depth * kernel_size * kernel_size + i * kernel_size + j;   // Flattened index of kernel
+
+                    // Multiply input value with the corresponding kernel and accumulate result
+                    sum += input[input_idx] * weights[kernel_idx];
+                }
+            }
+        }
+
+        // Add bias for this kernel's output
+        sum += biases[depth];
+
+        // Apply activation function (tanh) to the result of convolution
+        float activated_value = tanhf(sum);
+
+        // Store the activated value in the output data
+        int output_idx = depth * output_size * output_size + y * output_size + x;
+        output[output_idx] = activated_value;
+    }
+}
+
+// Kernel function for performing 2D convolution with padding (same)
+__global__ void convolution2D_kernel_with_padding(float* input, int input_size, float* output, int output_size, int kernel_size, float* weights, float* biases) {
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    int depth = blockIdx.z;  // Depth (kernel index)
+
+    // Compute padding based on kernel size for 'same' padding
+    int padding = (kernel_size - 1) / 2;
+
+    // Ensure we're within the output dimensions
+    if (x < output_size && y < output_size) {
+        float sum = 0.0f;
+
+        // Perform convolution operation
+        for (int i = 0; i < kernel_size; ++i) {
+            for (int j = 0; j < kernel_size; ++j) {
+                int input_x = x + i - padding;  // Apply padding offset
+                int input_y = y + j - padding;  // Apply padding offset
+
+                // Check bounds to ensure we don't access outside the input
+                if (input_x >= 0 && input_x < input_size && input_y >= 0 && input_y < input_size) {
                     int input_idx = input_y * input_size + input_x;                             // Flattened index of input
                     int kernel_idx = depth * kernel_size * kernel_size + i * kernel_size + j;   // Flattened index of kernel
 
@@ -561,7 +605,9 @@ void run_lenet_gpu() {
     // Step 1: Apply convolution (C1)
     dim3 blockSize(C1_SIZE, 1, 1);
     dim3 gridSize(C1_SIZE, C1_SIZE, C1_KERNEL_DEPTH);
-    convolution2D_kernel << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
+    // Uncomment if INPUT_SIZE = 32
+    // convolution2D_kernel << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
+    convolution2D_kernel_with_padding << <gridSize, blockSize >> > (d_input, INPUT_SIZE, d_C1_output, C1_SIZE, C1_KERNEL_SIZE, d_C1_weights, d_C1_biases);
     cudaDeviceSynchronize();
 
     // Step 2: Apply subsampling (S2)
@@ -606,7 +652,7 @@ void run_lenet_gpu() {
     MatrixPrint(input, INPUT_SIZE, INPUT_SIZE);
 
     printf("\nKernel data:\n");
-    MatrixPrint(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
+    TensorPrint(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE, C1_KERNEL_SIZE);
 
     printf("\nKernel biases (C1):\n");
     MatrixPrint(C1_biases, C1_KERNEL_DEPTH, 1);
