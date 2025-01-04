@@ -8,7 +8,7 @@
 
 // Input Layer
 #define INPUT_SIZE 28                                                       // Input image size (28x28)
-// #define INPUT_SIZE 32                                                       // Input image size (32x32)
+// #define INPUT_SIZE 32                                                    // Input image size (32x32)
 float input[INPUT_SIZE * INPUT_SIZE];                                       // Normalized pixel data
 
 // Layer 1: Conv2D (C1)
@@ -63,7 +63,7 @@ float F7_biases[F7_SIZE];                                                   // B
 #define FILENAME "data/train-images.idx3-ubyte"
 int imgIndex = 1;
 int*** img;                                                                 // Image data
-int color[3] = { 255, 0, 0 };                                               // RGB color for visualizing the images
+int color[3] = {255, 0, 0};                                                 // RGB color for visualizing the images
 
 /*
 Helper Methods
@@ -93,6 +93,7 @@ void MatrixPrint(float* M, int rows, int cols) {
         // Iterate through each column of the matrix
         for (int j = 0; j < cols; j++) {
             // Print each element of the matrix with 2 decimal places
+            // printf("%f ", M[i * cols + j]);
             printf("%6.2f ", M[i * cols + j]);
         }
         printf("\n");
