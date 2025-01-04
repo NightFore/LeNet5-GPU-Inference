@@ -8,7 +8,7 @@ This project aims to implement the LeNet-5 architecture on a GPU using CUDA, as 
 LeNet5-GPU-Inference
 │
 ├── LeNet5_Python_Notebook/        			# LeNet5 in Python
-├── Part1-MatrixOperations/        			# Matrix operations implemented in CUDACUDA
+├── Part1-MatrixOperations/        			# Matrix operations implemented in CUDA
 ├── Part2-Convolution_And_Subsampling/   	        # Convolution layers and pooling implemented in CUDA
 ├── Part3-LeNet5/                  			# Full LeNet5 Architecture in CUDA
 ├── LeNet5-GPU-Inference.sln       			# Visual Studio Solution for GPU Inference
