@@ -386,10 +386,13 @@ __global__ void fully_connected_kernel(float* input, int input_size, float* outp
 Main
     - initialize_input
     - initialize_weights
+    - initialize_biases
     - load_image
     - pad_image
     - load_weights
     - load_all_weights
+    - load_biases
+    - load_all_biases
     - run_lenet_gpu
     - main
 */
@@ -401,14 +404,18 @@ void initialize_input() {
 // Initialize weights with random values
 void initialize_weights() {
     MatrixInit(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
-    MatrixInit(C1_biases, C1_KERNEL_DEPTH, 1);
     MatrixInit(C3_weights, C3_KERNEL_DEPTH, C3_KERNEL_SIZE * C3_KERNEL_SIZE);
-    MatrixInit(C3_biases, C3_KERNEL_DEPTH, 1);
     MatrixInit(F5_weights, F5_SIZE, FLATTEN_SIZE);
-    MatrixInit(F5_biases, F5_SIZE, 1);
     MatrixInit(F6_weights, F6_SIZE, F5_SIZE);
-    MatrixInit(F6_biases, F6_SIZE, 1);
     MatrixInit(F7_weights, F7_SIZE, F6_SIZE);
+}
+
+// Initialize biases with random values
+void initialize_biases() {
+    MatrixInit(C1_biases, C1_KERNEL_DEPTH, 1);
+    MatrixInit(C3_biases, C3_KERNEL_DEPTH, 1);
+    MatrixInit(F5_biases, F5_SIZE, 1);
+    MatrixInit(F6_biases, F6_SIZE, 1);
     MatrixInit(F7_biases, F7_SIZE, 1);
 }
 
@@ -552,6 +559,53 @@ void load_all_weights() {
             printf("\n");
         }
     }
+}
+
+// Load biases from a file
+void load_biases(const char* filename, float* biases, int size) {
+    // Open the file in read mode
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        printf("Error: Unable to open file %s.\n", filename);
+        exit(EXIT_FAILURE); // Exit if file opening fails
+    }
+
+    // Read biases from the file
+    for (int i = 0; i < size; i++) {
+        if (fscanf(file, "%f", &biases[i]) != 1) {
+            printf("Error: File format incorrect or insufficient data in %s.\n", filename);
+            fclose(file);
+            exit(EXIT_FAILURE); // Exit if reading fails
+        }
+    }
+
+    // Close the file
+    fclose(file);
+    printf("Biases successfully loaded from %s.\n", filename);
+}
+
+// Load biases for all layers
+void load_all_biases() {
+    // File names for each layer's bias data
+    const char* C1_biases_file = "data/C1_biases.txt";
+    const char* C3_biases_file = "data/C3_biases.txt";
+    const char* F5_biases_file = "data/F5_biases.txt";
+    const char* F6_biases_file = "data/F6_biases.txt";
+    const char* F7_biases_file = "data/F7_biases.txt";
+
+    // Load biases for each layer
+    load_biases(C1_biases_file, C1_biases, C1_KERNEL_DEPTH);
+    load_biases(C3_biases_file, C3_biases, C3_KERNEL_DEPTH);
+    load_biases(F5_biases_file, F5_biases, F5_SIZE);
+    load_biases(F6_biases_file, F6_biases, F6_SIZE);
+    load_biases(F7_biases_file, F7_biases, F7_SIZE);
+
+    // Print loaded biases for C1 (for debugging purposes)
+    printf("\nC1 Biases:\n");
+    for (int i = 0; i < C1_KERNEL_DEPTH; i++) {
+        printf("%f ", C1_biases[i]);
+    }
+    printf("\n");
 }
 
 // LeNet GPU function to allocate memory, run the network, and free memory
@@ -729,8 +783,13 @@ int main() {
     printf("\nInitializing weights...\n");
     // initialize_weights();  // Random weight initialization
     load_all_weights();
+
+    // Step 6: Initialize or load biases
+    printf("\nInitializing biases...\n");
+    // initialize_biases();  // Random bias initialization
+    load_all_biases();
     
-    // Step 6: Run the neural network on GPU
+    // Step 7: Run the neural network on GPU
     printf("\nRunning the LeNet model on GPU...\n");
     run_lenet_gpu();
     
