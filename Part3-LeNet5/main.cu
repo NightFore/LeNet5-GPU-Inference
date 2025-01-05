@@ -57,7 +57,7 @@ float F7_output[F7_SIZE];                                                   // O
 float F7_weights[F7_SIZE * F6_SIZE];                                        // Weights for F7
 float F7_biases[F7_SIZE];                                                   // Bias for each neuron in F7
 
-// Placeholder
+// Parameters
 #define WIDTH 28
 #define HEIGHT 28
 #define FILENAME "data/train-images.idx3-ubyte"

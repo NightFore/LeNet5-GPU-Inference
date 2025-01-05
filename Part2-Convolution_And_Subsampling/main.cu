@@ -189,7 +189,7 @@ int main() {
     MatrixPrint(input, INPUT_SIZE, INPUT_SIZE);
 
     printf("\nKernel data:\n");
-    MatrixPrint(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE * C1_KERNEL_SIZE);
+    TensorPrint(C1_weights, C1_KERNEL_DEPTH, C1_KERNEL_SIZE, C1_KERNEL_SIZE);
 
     printf("\nKernel biases (C1):\n");
     MatrixPrint(C1_biases, C1_KERNEL_DEPTH, 1);

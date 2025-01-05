@@ -29,8 +29,7 @@ LeNet5-GPU-Inference
 
 1. **CUDA**: Make sure you have the [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit) installed to compile and run GPU-accelerated operations.
    
-2. **Compilers**:  
-   You’ll need a CUDA-compatible compiler such as [nvcc](https://developer.nvidia.com/cuda-zone) to compile the project. Optionally, you can use Visual Studio for an integrated development environment.
+2. **Compilers**: You’ll need a CUDA-compatible compiler such as [nvcc](https://developer.nvidia.com/cuda-zone) to compile the project. Optionally, you can use Visual Studio for an integrated development environment.
 
 ## How to Build and Run the Project
 
@@ -56,8 +55,8 @@ LeNet5-GPU-Inference
 
 ### Step 4: Run the Model
 
-- After compiling and ensuring the weight files are set up, execute the program. It will load a test image, preprocess it, load the weights/biases, and perform inference using the GPU.
-- You can modify the test image by changing the `imgIndex`. This value determines which image from the MNIST dataset is processed. For example, changing it to `imgIndex = 2;` will process the second test image.
+- After compiling and setting up the weight files, run the program. It will load and preprocess a test image, then perform inference using the GPU.
+- Modify the test image by changing the `imgIndex` value. This specifies which image from the MNIST dataset to process. For example, set `imgIndex = 2;` to process the second image.
 
 ```bash
 ./main

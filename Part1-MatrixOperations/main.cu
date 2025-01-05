@@ -10,7 +10,7 @@
 bool printMatrices = false;
 
 // Matrix dimensions and configuration parameters
-int n = 1000, p = 1000;
+int n = 10, p = 10;
 
 // Memory pointers for host and device
 float* matrix1, * matrix2, * resultMatrix;
